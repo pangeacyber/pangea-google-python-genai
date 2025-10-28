@@ -929,7 +929,7 @@ wheels = [
 
 [[package]]
 name = "pangea-google-genai"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "google-genai" },
