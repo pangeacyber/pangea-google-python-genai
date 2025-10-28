@@ -6,8 +6,8 @@ from google.genai import types
 from google.genai._api_client import BaseApiClient
 from google.genai._transformers import t_contents
 from google.genai.models import AsyncModels, Models
-from pangea.asyncio.services import AIGuardAsync
-from pangea.services import AIGuard
+from pangea.asyncio.services import AIGuardAsync, RedactAsync
+from pangea.services import AIGuard, Redact
 from pangea.services.ai_guard import Message as PangeaMessage
 from typing_extensions import override
 
@@ -18,6 +18,7 @@ __all__ = ("PangeaModels", "AsyncPangeaModels")
 
 class PangeaModels(Models):
     _ai_guard_client: AIGuard
+    _redact_client: Redact
     _pangea_input_recipe: str
     _pangea_output_recipe: str
 
@@ -27,12 +28,14 @@ class PangeaModels(Models):
         api_client_: BaseApiClient,
         *,
         ai_guard_client: AIGuard,
+        redact_client: Redact,
         pangea_input_recipe: str,
         pangea_output_recipe: str,
     ):
         super().__init__(api_client_)
 
         self._ai_guard_client = ai_guard_client
+        self._redact_client = redact_client
         self._pangea_input_recipe = pangea_input_recipe
         self._pangea_output_recipe = pangea_output_recipe
 
@@ -128,31 +131,52 @@ class PangeaModels(Models):
 
         genai_response = super().generate_content(model=model, contents=normalized_contents, config=config)
 
-        if genai_response.text is not None:
-            guard_output_response = self._ai_guard_client.guard_text(
-                # The LLM response must be contained within a single "assistant"
-                # message to AI Guard. Splitting up the content parts into
-                # multiple "assistant" messages will result in only the last
-                # message being processed.
-                messages=[message for message, _ in pangea_messages]
-                + [PangeaMessage(role="assistant", content=genai_response.text)],
-                recipe=self._pangea_output_recipe,
+        if genai_response.text is None:
+            return genai_response
+
+        output_messages = [PangeaMessage(role="assistant", content=genai_response.text)]
+
+        # FPE decryption.
+        if guard_input_response.result.fpe_context is not None:
+            redact_response = self._redact_client.unredact(
+                output_messages,
+                fpe_context=guard_input_response.result.fpe_context,
             )
+            assert redact_response.result is not None
+            output_messages = redact_response.result.data
 
-            assert guard_output_response.result is not None
+        guard_output_response = self._ai_guard_client.guard_text(
+            # The LLM response must be contained within a single "assistant"
+            # message to AI Guard. Splitting up the content parts into
+            # multiple "assistant" messages will result in only the last
+            # message being processed.
+            messages=[message for message, _ in pangea_messages] + output_messages,
+            recipe=self._pangea_output_recipe,
+        )
 
-            if guard_output_response.result.blocked:
-                raise PangeaAIGuardBlockedError()
+        assert guard_output_response.result is not None
 
-            # Not applying output transformations because the above conversion
-            # from Gemini API output to Pangea input is lossy because of the
-            # content parts concatenation.
+        if guard_output_response.result.blocked:
+            raise PangeaAIGuardBlockedError()
+
+        if (
+            guard_output_response.result.transformed
+            and guard_output_response.result.prompt_messages is not None
+            and genai_response.candidates
+            and genai_response.candidates[0].content is not None
+            and genai_response.candidates[0].content.parts is not None
+        ):
+            transformed_assistant_message = guard_output_response.result.prompt_messages[-1]
+            genai_response.candidates[0].content.parts = [
+                types.Part.from_text(text=transformed_assistant_message.content)
+            ]
 
         return genai_response
 
 
 class AsyncPangeaModels(AsyncModels):
     _ai_guard_client: AIGuardAsync
+    _redact_client: RedactAsync
     _pangea_input_recipe: str
     _pangea_output_recipe: str
 
@@ -162,12 +186,14 @@ class AsyncPangeaModels(AsyncModels):
         api_client_: BaseApiClient,
         *,
         ai_guard_client: AIGuardAsync,
+        redact_client: RedactAsync,
         pangea_input_recipe: str,
         pangea_output_recipe: str,
     ):
         super().__init__(api_client_)
 
         self._ai_guard_client = ai_guard_client
+        self._redact_client = redact_client
         self._pangea_input_recipe = pangea_input_recipe
         self._pangea_output_recipe = pangea_output_recipe
 
@@ -237,24 +263,44 @@ class AsyncPangeaModels(AsyncModels):
 
         genai_response = await super().generate_content(model=model, contents=normalized_contents, config=config)
 
-        if genai_response.text is not None:
-            guard_output_response = await self._ai_guard_client.guard_text(
-                # The LLM response must be contained within a single "assistant"
-                # message to AI Guard. Splitting up the content parts into
-                # multiple "assistant" messages will result in only the last
-                # message being processed.
-                messages=[message for message, _ in pangea_messages]
-                + [PangeaMessage(role="assistant", content=genai_response.text)],
-                recipe=self._pangea_output_recipe,
+        if genai_response.text is None:
+            return genai_response
+
+        output_messages = [PangeaMessage(role="assistant", content=genai_response.text)]
+
+        # FPE decryption.
+        if guard_input_response.result.fpe_context is not None:
+            redact_response = await self._redact_client.unredact(
+                output_messages,
+                fpe_context=guard_input_response.result.fpe_context,
             )
+            assert redact_response.result is not None
+            output_messages = redact_response.result.data
 
-            assert guard_output_response.result is not None
+        guard_output_response = await self._ai_guard_client.guard_text(
+            # The LLM response must be contained within a single "assistant"
+            # message to AI Guard. Splitting up the content parts into
+            # multiple "assistant" messages will result in only the last
+            # message being processed.
+            messages=[message for message, _ in pangea_messages] + output_messages,
+            recipe=self._pangea_output_recipe,
+        )
 
-            if guard_output_response.result.blocked:
-                raise PangeaAIGuardBlockedError()
+        assert guard_output_response.result is not None
 
-            # Not applying output transformations because the above conversion
-            # from Gemini API output to Pangea input is lossy because of the
-            # content parts concatenation.
+        if guard_output_response.result.blocked:
+            raise PangeaAIGuardBlockedError()
+
+        if (
+            guard_output_response.result.transformed
+            and guard_output_response.result.prompt_messages is not None
+            and genai_response.candidates
+            and genai_response.candidates[0].content is not None
+            and genai_response.candidates[0].content.parts is not None
+        ):
+            transformed_assistant_message = guard_output_response.result.prompt_messages[-1]
+            genai_response.candidates[0].content.parts = [
+                types.Part.from_text(text=transformed_assistant_message.content)
+            ]
 
         return genai_response
