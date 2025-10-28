@@ -29,6 +29,3 @@ response = client.models.generate_content(
 )
 print(response.text)
 ```
-
-Note that AI Guard transformations on the LLM response are **not** applied
-because the conversion from Gemini API output to Pangea AI Guard input is lossy.

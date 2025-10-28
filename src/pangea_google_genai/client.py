@@ -7,8 +7,8 @@ from google import genai
 from google.genai._api_client import BaseApiClient
 from google.genai.client import AsyncClient, DebugConfig
 from google.genai.types import HttpOptions, HttpOptionsDict
-from pangea.asyncio.services import AIGuardAsync
-from pangea.services import AIGuard
+from pangea.asyncio.services import AIGuardAsync, RedactAsync
+from pangea.services import AIGuard, Redact
 from typing_extensions import override
 
 from pangea_google_genai.models import AsyncPangeaModels, PangeaModels
@@ -50,6 +50,7 @@ class PangeaClient(genai.Client):
         self._models = PangeaModels(
             self._api_client,
             ai_guard_client=AIGuard(token=pangea_api_key),
+            redact_client=Redact(token=pangea_api_key),
             pangea_input_recipe=pangea_input_recipe,
             pangea_output_recipe=pangea_output_recipe,
         )
@@ -69,6 +70,7 @@ class AsyncPangeaClient(AsyncClient):
         self._models = AsyncPangeaModels(
             self._api_client,
             ai_guard_client=AIGuardAsync(token=pangea_api_key),
+            redact_client=RedactAsync(token=pangea_api_key),
             pangea_input_recipe=pangea_input_recipe,
             pangea_output_recipe=pangea_output_recipe,
         )
