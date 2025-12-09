@@ -617,6 +617,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/6f/d1/385110a9ae86d91cc14c5282c61fe9f4dc41c0b9f7d423c6ad77038c4448/google_auth-2.43.0-py2.py3-none-any.whl", hash = "sha256:af628ba6fa493f75c7e9dbe9373d148ca9f4399b5ea29976519e0a3848eddd16", size = 223114, upload-time = "2025-11-06T00:13:35.209Z" },
 ]
 
+[package.optional-dependencies]
+requests = [
+    { name = "requests" },
+]
+
 [[package]]
 name = "google-crc32c"
 version = "1.7.1"
@@ -654,11 +659,11 @@ wheels = [
 
 [[package]]
 name = "google-genai"
-version = "1.52.0"
+version = "1.54.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
-    { name = "google-auth" },
+    { name = "google-auth", extra = ["requests"] },
     { name = "httpx" },
     { name = "pydantic" },
     { name = "requests" },
@@ -666,9 +671,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/09/4e/0ad8585d05312074bb69711b2d81cfed69ce0ae441913d57bf169bed20a7/google_genai-1.52.0.tar.gz", hash = "sha256:a74e8a4b3025f23aa98d6a0f84783119012ca6c336fd68f73c5d2b11465d7fc5", size = 258743, upload-time = "2025-11-21T02:18:55.742Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e0/5d/0b8305a034db5ffcaf99d0842a0d941e01851c1c3806c68fb43723837c72/google_genai-1.54.0.tar.gz", hash = "sha256:ab7de6741437ee17f01d4db85e351eb8504466663cd83ce420ecb4e29b58b00d", size = 260467, upload-time = "2025-12-08T19:03:13.972Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ec/66/03f663e7bca7abe9ccfebe6cb3fe7da9a118fd723a5abb278d6117e7990e/google_genai-1.52.0-py3-none-any.whl", hash = "sha256:c8352b9f065ae14b9322b949c7debab8562982f03bf71d44130cd2b798c20743", size = 261219, upload-time = "2025-11-21T02:18:54.515Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/93/7096cdc1a4a55cc60bc02638f7077255acd32968c437cc32783e5abe430d/google_genai-1.54.0-py3-none-any.whl", hash = "sha256:c06853402814a47bb020f2dc50fc03fb77cc349dff65da35cddbd19046f9bd58", size = 262359, upload-time = "2025-12-08T19:03:12.337Z" },
 ]
 
 [[package]]
@@ -947,7 +952,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "google-genai", specifier = ">=1.52.0" },
+    { name = "google-genai", specifier = ">=1.53.0" },
     { name = "pangea-sdk", specifier = ">=6.13.0" },
     { name = "typing-extensions", specifier = ">=4.15.0" },
 ]
