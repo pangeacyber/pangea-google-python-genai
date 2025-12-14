@@ -9,7 +9,7 @@ authors = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "google-genai>=1.52.0",
+    "google-genai>=1.54.0",
     "pangea-sdk>=6.13.0",
     "typing-extensions>=4.15.0",
 ]
